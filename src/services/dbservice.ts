@@ -13,6 +13,11 @@ export class DBService {
         this.dbsettings = { ...this.dbsettings, ...(opts as any) };
     }
 
+    async create_index(client: Client, tablename, columnname) {
+        const query = `CREATE INDEX idx_${tablename}_${columnname} 
+        ON ${tablename}(${columnname});`
+        return await client.query(query);
+    }
 
 
     async connect(database?) {
