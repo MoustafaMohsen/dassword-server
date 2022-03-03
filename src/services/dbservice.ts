@@ -13,6 +13,20 @@ export class DBService {
         this.dbsettings = { ...this.dbsettings, ...(opts as any) };
     }
 
+    async PrepareDB(dbname = "dassworddb") {
+        // database will be created manually
+        let result: any = {}
+    
+        this.dbsettings.database = dbname;
+        const client2 = await this.connect();
+        result.create_user_tabel = await this.create_user_tabel(client2);
+        result.create_share_tabel = await this.create_share_tabel(client2);
+        await client2.end();
+        delete this.dbsettings.database;
+        console.log("DB is ready");
+        return result;
+    }
+
     async create_index(client: Client, tablename, columnname) {
         const query = `CREATE INDEX idx_${tablename}_${columnname} 
         ON ${tablename}(${columnname});`
