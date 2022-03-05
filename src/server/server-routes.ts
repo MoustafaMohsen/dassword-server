@@ -1,6 +1,7 @@
 import performance from "perf_hooks";
 import express from "express";
 import MainServerCore from './core/server-core';
+import { DBService } from "../services/dbservice";
 
 export default class MainServerRoutes extends MainServerCore {
 
@@ -36,7 +37,7 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
-        
+
         this.app.post('/', async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
@@ -47,6 +48,30 @@ export default class MainServerRoutes extends MainServerCore {
             }
         })
         //#endregion
+
+        this.app.get('/test-db', async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            const db = new DBService();
+            try {
+                data.result = (await db.connect());
+                send(res, data, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        })
+        
+        this.app.post('/prepare-db/' + process.env.APP_SECRET_KEY, async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            const db = new DBService();
+            try {
+                data.result = { ...(await db.PrepareDB(req.body.database)) };
+                send(res, data, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        })
 
 
     }
