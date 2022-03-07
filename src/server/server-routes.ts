@@ -49,7 +49,7 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
-        
+
         this.app.post('/admin/prepare-db/' + process.env.APP_SECRET_KEY, async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
@@ -82,6 +82,21 @@ export default class MainServerRoutes extends MainServerCore {
             const web3 = new Web3Store();
             try {
                 data = await web3.retrieve(req.body.cid);
+                send(res, data, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        })
+
+        this.app.post('/ipfs/store/', async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            try {
+                const web3 = new Web3Store();
+                if (!req.files || Object.keys(req.files).length === 0) {
+                    return err(res, 'No files were uploaded.', t0);
+                }
+                data = await web3.storeFiles(req.files.encrypteddb);
                 send(res, data, t0)
             } catch (error) {
                 err(res, error, t0)
