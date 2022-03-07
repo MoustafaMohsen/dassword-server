@@ -1,3 +1,4 @@
+import { Web3Store } from './../services/web3-storage';
 import performance from "perf_hooks";
 import express from "express";
 import MainServerCore from './core/server-core';
@@ -7,13 +8,13 @@ export default class MainServerRoutes extends MainServerCore {
 
     setupRoute() {
 
-        function send(res: express.Response, response, t0) {
+        function send(res: express.Response, data, t0) {
             let pre = performance.performance.now() - t0;
             console.log(`-->Request for:'${res.req.path}', from client:'${res.req.ip}' took:${pre}ms`);
             if (!res.headersSent) {
-                res.send(JSON.stringify({ performance: pre, success: true, data: { ...response } }))
+                res.send(JSON.stringify({ performance: pre, success: true, data }))
             } else {
-                res.write(JSON.stringify({ performance: pre, success: true, data: { ...response } }));
+                res.write(JSON.stringify({ performance: pre, success: true, data }));
                 res.end();
             }
         }
@@ -27,7 +28,7 @@ export default class MainServerRoutes extends MainServerCore {
         }
 
 
-        //#region Status Test
+        //#region Admin Area
         this.app.get('/', async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
@@ -37,19 +38,7 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
-
-        this.app.post('/', async (req, res) => {
-            let t0 = performance.performance.now();
-            let data = {} as any;
-            try {
-                send(res, data, t0)
-            } catch (error) {
-                err(res, error, t0)
-            }
-        })
-        //#endregion
-
-        this.app.get('/test-db', async (req, res) => {
+        this.app.get('/admin/test-db', async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
             const db = new DBService();
@@ -61,7 +50,7 @@ export default class MainServerRoutes extends MainServerCore {
             }
         })
         
-        this.app.post('/prepare-db/' + process.env.APP_SECRET_KEY, async (req, res) => {
+        this.app.post('/admin/prepare-db/' + process.env.APP_SECRET_KEY, async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
             const db = new DBService();
@@ -72,7 +61,32 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
+        //#endregion
 
+
+        this.app.post('/ipfs/list-all-files/' + process.env.APP_SECRET_KEY, async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            const web3 = new Web3Store();
+            try {
+                data = await web3.listUploads();
+                send(res, data, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        })
+
+        this.app.post('/ipfs/retrive/', async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            const web3 = new Web3Store();
+            try {
+                data = await web3.retrieve(req.body.cid);
+                send(res, data, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        })
 
     }
 
