@@ -27,7 +27,6 @@ export default class MainServerRoutes extends MainServerCore {
             res.send(JSON.stringify({ data: {}, response_status: 400, message, performance: pre, success: false }))
         }
 
-
         //#region Admin Area
         this.app.get('/', async (req, res) => {
             let t0 = performance.performance.now();

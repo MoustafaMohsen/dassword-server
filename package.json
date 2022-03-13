@@ -1,7 +1,8 @@
 {
-  "name": "viafusion",
+  "name": "dassword",
   "version": "1.0.0",
   "description": "",
+  "type": "commonjs",
   "main": "dist/index.js",
   "scripts": {
     "watch": "tsc --watch",
