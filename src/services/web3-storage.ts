@@ -1,4 +1,4 @@
-import { getFilesFromPath, Web3Storage } from 'web3.storage'
+import { Filelike, getFilesFromPath, Web3Storage } from 'web3.storage'
 
 export class Web3Store {
     constructor() {
@@ -66,9 +66,9 @@ export class Web3Store {
         return files
     }
 
-    async storeFiles(files) {
+    async storeFiles(files:Filelike) {
         const client = this.makeStorageClient()
-        const cid = await client.put(files)
+        const cid = await client.put([files])
         console.log('stored files with cid:', cid)
         return cid;
     }
