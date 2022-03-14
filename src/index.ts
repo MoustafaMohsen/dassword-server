@@ -1,3 +1,5 @@
+import { config } from "dotenv"; "dotenv";
+config();
 import MainServer from "./server/core/server-init";
 
 try {
