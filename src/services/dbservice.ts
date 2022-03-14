@@ -7,7 +7,7 @@ export class DBService {
         password: process.env.DATABASE_PASSWORD,
         host: process.env.DATABASE_HOST,
         database: process.env.DATABASE_NAME,
-        port:parseInt(process.env.DATABASE_PORT)
+        port: parseInt(process.env.DATABASE_PORT)
     }
     constructor(opts?: { host?: string; user?: string; password?: string; port?: number; database?}) {
         this.dbsettings = { ...this.dbsettings, ...(opts as any) };
@@ -16,11 +16,12 @@ export class DBService {
     async PrepareDB(dbname = "dassworddb") {
         // database will be created manually
         let result: any = {}
-    
+
+
         this.dbsettings.database = dbname;
         const client2 = await this.connect();
         result.create_user_tabel = await this.create_user_tabel(client2);
-        result.create_share_tabel = await this.create_share_tabel(client2);
+        // result.create_share_tabel = await this.create_share_tabel(client2); TODO: enable share table
         await client2.end();
         delete this.dbsettings.database;
         console.log("DB is ready");
@@ -42,6 +43,12 @@ export class DBService {
     }
 
 
+    /**
+     * Establish a connection with PSQL and drop the database if already exists, then create the database
+     * @param client 
+     * @param dbname 
+     * @returns 
+     */
     async createDB(client: Client, dbname = "dassworddb") {
         await client.query(`SELECT pg_terminate_backend(pg_stat_activity.pid)
         FROM pg_stat_activity
@@ -54,14 +61,13 @@ export class DBService {
     }
 
     // ======= Create Tables
-
-
     async create_user_tabel(client: Client, tablename = "dbuser") {
         await client.query("DROP TABLE IF EXISTS " + tablename + ";")
-        let result = await client.query(`CREATE TABLE IF NOT EXISTS ${tablename} (
+        let result = await client.query(`CREATE TABLE ${tablename} (
             id SERIAL PRIMARY KEY,
             security_hash TEXT NOT NULL,
             email VARCHAR ( 255 ) NOT NULL UNIQUE,
+            db_cid VARCHAR ( 255 ),
             meta TEXT
 );`)
         return result;
@@ -69,7 +75,7 @@ export class DBService {
 
     async create_share_tabel(client: Client, tablename = "dbshare") {
         await client.query("DROP TABLE IF EXISTS " + tablename + ";")
-        let result = await client.query(`CREATE TABLE IF NOT EXISTS ${tablename} (
+        let result = await client.query(`CREATE TABLE ${tablename} (
             id SERIAL PRIMARY KEY,
             owner_id SERIAL NOT NULL,
             reciver_id SERIAL NOT NULL,
@@ -79,7 +85,7 @@ export class DBService {
         return result;
     }
 
-    
+
     // Query helpers ==========
     async insertRows(tabelname, client: Client, cols: string[], values: string[][]) {
         const queries = this.create_multiple_insert_queries(tabelname, cols, values);
@@ -159,7 +165,7 @@ export class DBService {
         let _tmp_val_replace = _tmp_cols_arr.join(", ");
         let _tmp_cols = cols.map(d => d.replace("'", "''")).join(", ");
         const query = {
-            text: `INSERT INTO ${tabelname} (${_tmp_cols}) VALUES(${_tmp_val_replace}) RETURNING contact_reference_id`,
+            text: `INSERT INTO ${tabelname} (${_tmp_cols}) VALUES(${_tmp_val_replace}) RETURNING id`,
             values
         }
         return query;
