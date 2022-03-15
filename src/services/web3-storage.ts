@@ -39,6 +39,7 @@ export class Web3Store {
         if (!res.ok) {
             throw new Error(`failed to get ${cid}`)
         }
+
         return res;
     }
 
@@ -68,7 +69,10 @@ export class Web3Store {
 
     async storeFiles(files:Filelike) {
         const client = this.makeStorageClient()
-        const cid = await client.put([files])
+        const cid = await client.put([files],{
+            maxRetries:10,
+            wrapWithDirectory:false
+        })
         console.log('stored files with cid:', cid)
         return cid;
     }
