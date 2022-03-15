@@ -1,21 +1,50 @@
-import { IDBSecurity } from "../interfaces/isecurity";
+import { ISecurity } from "../interfaces/isecurity";
+import { HelperService } from "../services/util/helper";
+import * as CryptoJS from 'crypto-js';
 
-export class DBSecurity implements IDBSecurity {
-    constructor(security?:IDBSecurity) {
+export class Security implements ISecurity {
+    constructor(security?: ISecurity) {
         if (security) {
-            if (security.login) {
-                this.login = {
-                    ...this.login,
-                    ...security.login
-                }
-            }
+            this.email = security.email
+            this.email = security.email
         }
     }
-    
-    login = {
-    
-        data: null,
-        _sandbox: true,
 
-    };
+
+    email: string;
+    secure_hash: string;
+    
+    authenticate(secureAuthObject) {
+        // TODO: decrypt the AuthObject with the server's private key
+        let decrypted_hash = this.encryptAsymmetric(this.createHash(secureAuthObject.secure_hash));
+
+        let minimumUser = {
+            email: secureAuthObject.email,
+            secure_hash: decrypted_hash
+        }
+        return minimumUser;
+    }
+
+    createHash(message) {
+        var hash = CryptoJS.SHA3(message, { outputLength: 512 }).toString(CryptoJS.enc.Hex);
+        return hash;
+    }
+
+    generateSecureAuthObject(email, password) {
+        let encrypted_hash = this.encryptAsymmetric(this.createHash(password));
+        password = null;
+        return {
+            email,
+            secure_hash: encrypted_hash,
+            salt: HelperService.makeid()
+        }
+    }
+
+    encryptAsymmetric(message: string, public_key?: string) {
+        // TODO: Implement asymmetric Encryption
+        // TODO: 1- Ask for the server's public key
+        // TODO: 2- Encrypt secure object with the recieved public key
+
+        return message;
+    }
 }
