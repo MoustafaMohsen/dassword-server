@@ -1,7 +1,10 @@
-import { IDBSecurity } from "./isecurity";
+import { ISecurity } from "./isecurity";
 
-export interface IDBUser {
+export interface IUser {
+    user_id?: string;
     email?: string;
-    security_hash?: IDBSecurity;
+    db_cid?: string;
+    db_version?: string;
+    secure_hash?: ISecurity;
     meta?: object;
 }

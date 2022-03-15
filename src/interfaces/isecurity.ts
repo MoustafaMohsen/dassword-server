@@ -1,5 +1,5 @@
 
-export interface IDBSecurity {
-    login: any;
-    [key: string]: any;
+export interface ISecurity {
+    email: string;
+    secure_hash:string;
 }
