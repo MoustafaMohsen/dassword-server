@@ -64,10 +64,11 @@ export class DBService {
     async create_user_tabel(client: Client, tablename = "dbuser") {
         await client.query("DROP TABLE IF EXISTS " + tablename + ";")
         let result = await client.query(`CREATE TABLE ${tablename} (
-            id SERIAL PRIMARY KEY,
-            security_hash TEXT NOT NULL,
+            user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             email VARCHAR ( 255 ) NOT NULL UNIQUE,
             db_cid VARCHAR ( 255 ),
+            db_version VARCHAR ( 255 ),
+            secure_hash TEXT,
             meta TEXT
 );`)
         return result;
@@ -77,9 +78,9 @@ export class DBService {
         await client.query("DROP TABLE IF EXISTS " + tablename + ";")
         let result = await client.query(`CREATE TABLE ${tablename} (
             id SERIAL PRIMARY KEY,
-            owner_id SERIAL NOT NULL,
-            reciver_id SERIAL NOT NULL,
-            security_hash TEXT,
+            ownerId SERIAL NOT NULL,
+            reciverId SERIAL NOT NULL,
+            secure_hash TEXT,
             meta TEXT
 );`)
         return result;
@@ -130,7 +131,7 @@ export class DBService {
         for (let i = 0; i < equals_keys.length; i++) {
             const key = equals_keys[i];
             const value = values[key];
-            _tmp_keys = _tmp_keys + key + `=$${i + 1} ` + (i != equals_keys.length - 1 ? relation : "");
+            _tmp_keys = _tmp_keys + key + `=$${i + 1} ` + (i != (equals_keys.length - 1) ? relation + " " : "");
         }
         let _tmp_cols = cols ? typeof cols == "string" ? cols : cols.join(", ") : "*";
         const query = {
@@ -157,15 +158,16 @@ export class DBService {
         return query;
     }
 
-    create_insert_query(tabelname, cols: string[], values: string[]): QueryConfig {
+    create_insert_query(tabelname, cols: string[], values: string[], returnedField = "user_id"): QueryConfig {
         let _tmp_cols_arr = [];
         for (let i = 0; i < cols.length; i++) {
             _tmp_cols_arr.push("$" + (i + 1));
         }
         let _tmp_val_replace = _tmp_cols_arr.join(", ");
         let _tmp_cols = cols.map(d => d.replace("'", "''")).join(", ");
+        let returnQuery = returnedField?" RETURNING "+returnedField:"";
         const query = {
-            text: `INSERT INTO ${tabelname} (${_tmp_cols}) VALUES(${_tmp_val_replace}) RETURNING id`,
+            text: `INSERT INTO ${tabelname} (${_tmp_cols}) VALUES(${_tmp_val_replace}) `+ returnQuery,
             values
         }
         return query;
@@ -203,10 +205,10 @@ export class DBService {
 
     // Query helpers ==========
 
-    async insert_object(data: object, tabelname, dbname = "dassworddb") {
+    async insert_object(data: object, tabelname, dbname = "dassworddb", returnedField = "user_id") {
         let keys = Object.keys(data);
         let values = Object.values(data);
-        const query = this.create_insert_query(tabelname, keys, values);
+        const query = this.create_insert_query(tabelname, keys, values, returnedField);
         const client = await this.connect(dbname);
         let result = await client.query(query);
         await client.end();
