@@ -104,7 +104,6 @@ export class UserService {
             try {
                 temp = JSON.parse(str);
             } catch (error) {
-                console.error(error);
                 temp = str;
             }
         } else {

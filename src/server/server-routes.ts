@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as stream from 'stream';
 import { UploadedFile } from 'express-fileupload';
 import { Base64 } from 'js-base64';
+import {Blob} from 'node:buffer';
 
 export default class MainServerRoutes extends MainServerCore {
 
@@ -75,7 +76,7 @@ export default class MainServerRoutes extends MainServerCore {
             let t0 = performance.performance.now();
             try {
                 const userSrv = new UserService();
-                let secureAuthObject: IUser = req.body.encrypted_data;
+                let secureAuthObject: IUser = req.body.secureAuthObject;
                 userSrv.registerUser(secureAuthObject).then((d) => {
                     send(res, d, t0)
                 }).catch(e => {
@@ -91,7 +92,7 @@ export default class MainServerRoutes extends MainServerCore {
             let t0 = performance.performance.now();
             try {
                 const userSrv = new UserService();
-                let secureAuthObject: IUser = req.body.encrypted_data;
+                let secureAuthObject: IUser = req.body.secureAuthObject;
                 userSrv.authenticatUser(secureAuthObject).then((d) => {
                     send(res, d, t0)
                 }).catch(e => {
@@ -148,7 +149,8 @@ export default class MainServerRoutes extends MainServerCore {
             try {
                 // authenticate user
                 const userSrv = new UserService();
-                const user = await userSrv.authenticatUser(req.body.secureAuthObject)
+                const secureAuthObject = userSrv.parse_if_string(req.body.secureAuthObject);
+                const user = await userSrv.authenticatUser(secureAuthObject)
                 if (!req.files?.encrypteddb?.['data']) throw new Error("No Db file was attached");
 
                 const dbFile = req.files.encrypteddb as UploadedFile;
@@ -164,8 +166,9 @@ export default class MainServerRoutes extends MainServerCore {
                 const web3 = new Web3Store();
                 const cidString = await web3.storeFiles(node_file);
                 user.db_cid = cidString;
-                user.db_version = HelperService.makeid();
-                send(res, data, t0)
+                user.db_version = req.body.db_version;
+                const newuser = await userSrv.update_db_user({ user_id: user.user_id }, user);
+                send(res, newuser, t0)
             } catch (error) {
                 err(res, error, t0)
             }
@@ -174,24 +177,23 @@ export default class MainServerRoutes extends MainServerCore {
         this.app.post('/ipfs/retrive/db/', async (req, res) => {
             let t0 = performance.performance.now();
             try {
-                if (!req.body.user_id) throw new Error("User data was not attached");
+                if (!req.body.secureAuthObject) throw new Error("User data was not attached");
 
                 // authenticate user
                 const userSrv = new UserService();
                 const user = await userSrv.authenticatUser(req.body.secureAuthObject)
 
                 const web3 = new Web3Store();
-                const response = await web3.retrieve(user.db_cid);
-                var files = await response.files();
+                const files = await web3.retrieveFiles(user.db_cid);
                 const file = files[0];
 
                 if (!file) throw new Error("Db file was not found");
-                
+
                 // the following conversion supports arabic characters, emojis and Chinese and asian character
                 // File ==> ArrayBuffer ==> Base64 ==> String ==> Object
 
                 // Conver file to ArrayBuffer
-                let buffer = await file.arrayBuffer();
+                let buffer = await file.arrayBuffer() as any;
 
                 // Convert ArrayBuffer to Base64
                 var blob_file = new Blob([buffer], { type: 'text/plain' });
@@ -199,10 +201,10 @@ export default class MainServerRoutes extends MainServerCore {
 
                 // Conver Base64 to String
                 let enctyptedStringfiedDBObject = Base64.decode(base64_str)
-                
+
                 // Converty String to Object
                 let enctyptedDBObject = JSON.parse(enctyptedStringfiedDBObject);
-          
+
                 send(res, enctyptedDBObject, t0)
 
             } catch (error) {
