@@ -47,4 +47,15 @@ export class Security implements ISecurity {
 
         return message;
     }
+
+    static encryptString(string: string, encryptionKey: string = "") {
+        var encryptedCiphertext = CryptoJS.AES.encrypt(string, encryptionKey.trim()).toString();
+        return encryptedCiphertext;
+      }
+    
+      static decryptString(string: string, encryptionKey: string) {
+        var decryptedCipherText = CryptoJS.AES.decrypt(string, encryptionKey.trim()).toString(CryptoJS.enc.Utf8);;
+        return decryptedCipherText;
+      }
+    
 }

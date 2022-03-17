@@ -6,5 +6,7 @@ export interface IUser {
     db_cid?: string;
     db_version?: number;
     secure_hash?: ISecurity;
-    meta?: object;
+    meta?: {
+        private_key:string;
+    };
 }

@@ -1,3 +1,4 @@
+import { Security } from './../models/security';
 import { HelperService } from './../services/util/helper';
 import { IUser } from './../interfaces/user.interface';
 import { Web3Store } from './../services/web3-storage';
@@ -76,8 +77,11 @@ export default class MainServerRoutes extends MainServerCore {
             let t0 = performance.performance.now();
             try {
                 const userSrv = new UserService();
-                let secureAuthObject: IUser = req.body.secureAuthObject;
-                userSrv.registerUser(secureAuthObject).then((d) => {
+                let newUserObject: IUser = req.body.secureAuthObject;
+                newUserObject.meta = {
+                    private_key:HelperService.makeid(64)
+                }
+                userSrv.registerUser(newUserObject).then((d) => {
                     send(res, d, t0)
                 }).catch(e => {
                     err(res, e, t0)
@@ -143,7 +147,7 @@ export default class MainServerRoutes extends MainServerCore {
             }
         })
 
-        this.app.post('/ipfs/store/db/', async (req, res) => {
+        this.app.post('/ipfs/store/file/', async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
             try {
@@ -152,7 +156,7 @@ export default class MainServerRoutes extends MainServerCore {
                 const secureAuthObject = userSrv.parse_if_string(req.body.secureAuthObject);
                 const user = await userSrv.authenticatUser(secureAuthObject)
                 if (!req.files?.encrypteddb?.['data']) throw new Error("No Db file was attached");
-
+ 
                 const dbFile = req.files.encrypteddb as UploadedFile;
                 if (!user) throw new Error("No user found");
 
@@ -172,7 +176,42 @@ export default class MainServerRoutes extends MainServerCore {
             } catch (error) {
                 err(res, error, t0)
             }
-        })
+        });
+
+        this.app.post('/ipfs/store/db/', async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            try {
+                // authenticate user
+                const userSrv = new UserService();
+                const secureAuthObject = userSrv.parse_if_string(req.body.secureAuthObject);
+                const user = await userSrv.authenticatUser(secureAuthObject)
+                if (!req.body.encrypteddb) throw new Error("No Db file was attached");
+                if (!user) throw new Error("No user found");
+ 
+                const encrypteddb = req.body.encrypteddb;
+                const usersPrivateKey = user.meta.private_key;
+                const serverEncryptedDb = Security.encryptString(encrypteddb,usersPrivateKey)
+                // convert encrypteddb string to file object
+                const buffer = Buffer.from(serverEncryptedDb);
+                const theStream = () => stream.Readable.from(buffer);
+
+                let node_file: any = {
+                    name: "encrypteddb",
+                    stream: theStream
+                }
+                const web3 = new Web3Store();
+
+                // upload to IPFS
+                const cidString = await web3.storeFiles(node_file);
+                user.db_cid = cidString;
+                user.db_version = req.body.db_version;
+                const newuser = await userSrv.update_db_user({ user_id: user.user_id }, user);
+                send(res, newuser, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        });
 
         this.app.post('/ipfs/retrive/db/', async (req, res) => {
             let t0 = performance.performance.now();
@@ -197,7 +236,11 @@ export default class MainServerRoutes extends MainServerCore {
 
                 // Convert ArrayBuffer to Base64
                 var blob_file = new Blob([buffer], { type: 'text/plain' });
-                var base64_str = await blob_file.text();
+                var serverEncryptedDb = await blob_file.text();
+
+                // Decrypt the database to user decryption level
+                const usersPrivateKey = user.meta.private_key;
+                const base64_str = Security.decryptString(serverEncryptedDb,usersPrivateKey)
 
                 // Conver Base64 to String
                 let enctyptedStringfiedDBObject = Base64.decode(base64_str)

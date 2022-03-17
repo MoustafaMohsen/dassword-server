@@ -53,6 +53,7 @@ export class UserService {
         } catch (error) {
             throw new Error("Failed to authenticate");
         }
+        minimumUser.meta = secureAuthObject.meta||{}
         return this.create_db_user(minimumUser)
     }
 
