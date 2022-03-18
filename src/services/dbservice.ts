@@ -63,7 +63,9 @@ export class DBService {
     // ======= Create Tables
     async create_user_tabel(client: Client, tablename = "dbuser") {
         await client.query("DROP TABLE IF EXISTS " + tablename + ";")
-        let result = await client.query(`CREATE TABLE ${tablename} (
+        let result = await client.query(`
+        CREATE EXTENSION pgcrypto;
+        CREATE TABLE ${tablename} (
             user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             email VARCHAR ( 255 ) NOT NULL UNIQUE,
             db_cid VARCHAR ( 255 ),

@@ -11,7 +11,7 @@ import * as fs from 'fs';
 import * as stream from 'stream';
 import { UploadedFile } from 'express-fileupload';
 import { Base64 } from 'js-base64';
-import {Blob} from 'node:buffer';
+import { Blob } from 'node:buffer';
 
 export default class MainServerRoutes extends MainServerCore {
 
@@ -72,16 +72,16 @@ export default class MainServerRoutes extends MainServerCore {
         //#endregion
 
 
-
         this.app.post('/register', async (req, res) => {
             let t0 = performance.performance.now();
             try {
                 const userSrv = new UserService();
                 let newUserObject: IUser = req.body.secureAuthObject;
                 newUserObject.meta = {
-                    private_key:HelperService.makeid(64)
+                    private_key: HelperService.makeid(64)
                 }
                 userSrv.registerUser(newUserObject).then((d) => {
+                    delete d.meta;
                     send(res, d, t0)
                 }).catch(e => {
                     err(res, e, t0)
@@ -90,7 +90,6 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
-
 
         this.app.post('/login', async (req, res) => {
             let t0 = performance.performance.now();
@@ -98,6 +97,7 @@ export default class MainServerRoutes extends MainServerCore {
                 const userSrv = new UserService();
                 let secureAuthObject: IUser = req.body.secureAuthObject;
                 userSrv.authenticatUser(secureAuthObject).then((d) => {
+                    delete d.meta;
                     send(res, d, t0)
                 }).catch(e => {
                     err(res, e, t0)
@@ -106,22 +106,6 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
-
-        this.app.post('/delete-db-user', async (req, res) => {
-            let t0 = performance.performance.now();
-            try {
-                const userSrv = new UserService();
-                let body: IUser = req.body;
-                userSrv.delete_db_user(body).then((d) => {
-                    send(res, d, t0)
-                }).catch(e => {
-                    err(res, e, t0)
-                })
-            } catch (error) {
-                err(res, error, t0)
-            }
-        })
-
 
         this.app.post('/ipfs/list-all-files/' + process.env.APP_SECRET_KEY, async (req, res) => {
             let t0 = performance.performance.now();
@@ -135,49 +119,6 @@ export default class MainServerRoutes extends MainServerCore {
             }
         })
 
-        this.app.post('/ipfs/retrive/', async (req, res) => {
-            let t0 = performance.performance.now();
-            let data = {} as any;
-            const web3 = new Web3Store();
-            try {
-                data = await web3.retrieve(req.body.cid);
-                send(res, data, t0)
-            } catch (error) {
-                err(res, error, t0)
-            }
-        })
-
-        this.app.post('/ipfs/store/file/', async (req, res) => {
-            let t0 = performance.performance.now();
-            let data = {} as any;
-            try {
-                // authenticate user
-                const userSrv = new UserService();
-                const secureAuthObject = userSrv.parse_if_string(req.body.secureAuthObject);
-                const user = await userSrv.authenticatUser(secureAuthObject)
-                if (!req.files?.encrypteddb?.['data']) throw new Error("No Db file was attached");
- 
-                const dbFile = req.files.encrypteddb as UploadedFile;
-                if (!user) throw new Error("No user found");
-
-                const buffer = Buffer.from(dbFile.data);
-                const theStream = () => stream.Readable.from(buffer);
-
-                let node_file: any = {
-                    name: dbFile.name,
-                    stream: theStream
-                }
-                const web3 = new Web3Store();
-                const cidString = await web3.storeFiles(node_file);
-                user.db_cid = cidString;
-                user.db_version = req.body.db_version;
-                const newuser = await userSrv.update_db_user({ user_id: user.user_id }, user);
-                send(res, newuser, t0)
-            } catch (error) {
-                err(res, error, t0)
-            }
-        });
-
         this.app.post('/ipfs/store/db/', async (req, res) => {
             let t0 = performance.performance.now();
             let data = {} as any;
@@ -188,10 +129,10 @@ export default class MainServerRoutes extends MainServerCore {
                 const user = await userSrv.authenticatUser(secureAuthObject)
                 if (!req.body.encrypteddb) throw new Error("No Db file was attached");
                 if (!user) throw new Error("No user found");
- 
+
                 const encrypteddb = req.body.encrypteddb;
                 const usersPrivateKey = user.meta.private_key;
-                const serverEncryptedDb = Security.encryptString(encrypteddb,usersPrivateKey)
+                const serverEncryptedDb = Security.encryptString(encrypteddb, usersPrivateKey)
                 // convert encrypteddb string to file object
                 const buffer = Buffer.from(serverEncryptedDb);
                 const theStream = () => stream.Readable.from(buffer);
@@ -240,7 +181,7 @@ export default class MainServerRoutes extends MainServerCore {
 
                 // Decrypt the database to user decryption level
                 const usersPrivateKey = user.meta.private_key;
-                const base64_str = Security.decryptString(serverEncryptedDb,usersPrivateKey)
+                const base64_str = Security.decryptString(serverEncryptedDb, usersPrivateKey)
 
                 // Conver Base64 to String
                 let enctyptedStringfiedDBObject = Base64.decode(base64_str)
@@ -254,6 +195,38 @@ export default class MainServerRoutes extends MainServerCore {
                 err(res, error, t0)
             }
         })
+
+        this.app.post('/ipfs/store/file/', async (req, res) => {
+            let t0 = performance.performance.now();
+            let data = {} as any;
+            try {
+                // authenticate user
+                const userSrv = new UserService();
+                const secureAuthObject = userSrv.parse_if_string(req.body.secureAuthObject);
+                const user = await userSrv.authenticatUser(secureAuthObject)
+                if (!req.files?.encrypteddb?.['data']) throw new Error("No Db file was attached");
+
+                const dbFile = req.files.encrypteddb as UploadedFile;
+                if (!user) throw new Error("No user found");
+
+                const buffer = Buffer.from(dbFile.data);
+                const theStream = () => stream.Readable.from(buffer);
+
+                let node_file: any = {
+                    name: dbFile.name,
+                    stream: theStream
+                }
+                const web3 = new Web3Store();
+                const cidString = await web3.storeFiles(node_file);
+                user.db_cid = cidString;
+                user.db_version = req.body.db_version;
+                const newuser = await userSrv.update_db_user({ user_id: user.user_id }, user);
+                send(res, newuser, t0)
+            } catch (error) {
+                err(res, error, t0)
+            }
+        });
+
 
         this.app.post('/ipfs/retrive/file/', async (req, res) => {
             let t0 = performance.performance.now();
